@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Subscription - ETF Trading Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Purchase Subscription</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="purchase-details">
+        <h3>Plan Details</h3>
+
+        <div class="plan-summary">
+            <p><strong>Plan:</strong> {{ plan.name }}</p>
+            <p><strong>Duration:</strong> {{ plan.duration_days // 30 }} Month{{ 's' if plan.duration_days // 30 != 1 else '' }}</p>
+            <p><strong>Price:</strong> ₹{{ plan.price }}</p>
+            <p><strong>Description:</strong> {{ plan.description }}</p>
+
+            {% if current_subscription %}
+                <div class="current-subscription-info">
+                    <h4>Current Subscription</h4>
+                    <p>You have an active subscription until {{ current_subscription.expiry_date|datetime('%d-%m-%Y') }}.</p>
+                    <p>Purchasing a new plan will extend your subscription from the current expiry date.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Simulated payment form for development -->
+        <form method="post" action="/subscription/confirm" class="payment-form">
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+
+            <div class="form-group">
+                <label for="payment_method">Payment Method</label>
+                <select id="payment_method" name="payment_method" required>
+                    <option value="">-- Select Payment Method --</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="debit_card">Debit Card</option>
+                    <option value="upi">UPI</option>
+                    <option value="net_banking">Net Banking</option>
+                </select>
+            </div>
+
+            <div class="payment-note">
+                <p>Note: This is a development version with simulated payment.</p>
+                <p>In production, this would connect to a payment gateway.</p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Confirm Purchase</button>
+                <a href="/subscription" class="btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .plan-summary {
+        background-color: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 5px;
+        margin-bottom: 2rem;
+    }
+    .payment-form {
+        max-width: 600px;
+        margin-top: 2rem;
+    }
+    .payment-note {
+        background-color: #ffffd0;
+        padding: 1rem;
+        border-radius: 5px;
+        margin: 1.5rem 0;
+        font-style: italic;
+    }
+    .form-actions {
+        margin-top: 1.5rem;
+    }
+    .form-actions .btn {
+        margin-right: 0.5rem;
+    }
+    .current-subscription-info {
+        background-color: #e9f7ff;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}

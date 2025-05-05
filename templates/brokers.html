@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Broker Connections - ETF Trading Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Manage Broker Connections</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <div class="broker-list">
+        <h3>Your Broker Connections</h3>
+
+        {% if brokers %}
+        <table class="broker-table">
+            <thead>
+                <tr>
+                    <th>Broker</th>
+                    <th>User ID</th>
+                    <th>Is Master</th>
+                    <th>Copy</th>
+                    <th>Multiplier</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for broker in brokers %}
+                <tr>
+                    <td>{{ broker.broker_name }}</td>
+                    <td>{{ broker.user_id_broker }}</td>
+                    <td>{{ "Yes" if broker.is_master else "No" }}</td>
+                    <td>{{ "Yes" if broker.copy else "No" }}</td>
+                    <td>{{ broker.copy_multiplier }}</td>
+                    <td>
+                        <a href="/brokers/edit/{{ broker.id }}" class="btn">Edit</a>
+                        <a href="/brokers/delete/{{ broker.id }}" class="btn" onclick="return confirm('Are you sure you want to delete this broker connection?')">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>You don't have any broker connections yet. Add one below.</p>
+        {% endif %}
+    </div>
+
+    <!-- Add this to templates/brokers.html, just after the broker-list div -->
+    <div class="export-section">
+        <form method="post" action="/brokers/export">
+            <button type="submit" class="btn">Export to accounts.csv</button>
+            <small>Use this to manually update the ETF trading system's account list.</small>
+        </form>
+    </div>
+
+    <div class="add-broker">
+        <h3>Add New Broker Connection</h3>
+        <form method="post" action="/brokers/add">
+            <div class="form-group">
+                <label for="broker_name">Broker Platform</label>
+                <select id="broker_name" name="broker_name" required onchange="showBrokerFields(this.value)">
+                    <option value="">-- Select Broker --</option>
+                    <option value="FINVASIA">Finvasia/Shoonya</option>
+                    <option value="ZERODHA">Zerodha</option>
+                    <option value="UPSTOX">Upstox</option>
+                    <option value="DHAN">Dhan</option>
+                    <option value="MSTOCK">mStock</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="user_id_broker">User ID / Client ID</label>
+                <input type="text" id="user_id_broker" name="user_id_broker" required>
+            </div>
+
+            <!-- Fields for all brokers -->
+            <div class="form-group">
+                <label for="is_master">Is Master Account?</label>
+                <input type="checkbox" id="is_master" name="is_master">
+                <small>Master accounts determine which ETFs to buy. Only one master account is allowed.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="copy">Copy Trades?</label>
+                <input type="checkbox" id="copy" name="copy" checked>
+                <small>Whether this account should copy trades from the master account.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="copy_multiplier">Copy Multiplier</label>
+                <input type="number" id="copy_multiplier" name="copy_multiplier" min="1" value="1">
+                <small>Multiply quantities by this value when copying trades.</small>
+            </div>
+
+            <!-- Broker-specific fields -->
+            <div id="finvasia-fields" class="broker-fields" style="display:none;">
+                <h4>Finvasia Specific Fields</h4>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                        <div class="password-container">
+                        <input type="password" id="password" name="password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
+                        <i class="view-icon">👁️</i>
+                        </button>
+                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="totp_secret">TOTP Secret</label>
+                    <input type="text" id="totp_secret" name="totp_secret">
+                </div>
+
+                <div class="form-group">
+                    <label for="vendor_code">Vendor Code</label>
+                    <input type="text" id="vendor_code" name="vendor_code">
+                </div>
+
+                <div class="form-group">
+                    <label for="api_secret">API Secret</label>
+                    <input type="text" id="api_secret" name="api_secret">
+                </div>
+
+                <div class="form-group">
+                    <label for="imei">IMEI</label>
+                    <input type="text" id="imei" name="imei">
+                </div>
+            </div>
+
+            <div id="zerodha-fields" class="broker-fields" style="display:none;">
+                <h4>Zerodha Specific Fields</h4>
+
+                <div class="form-group">
+                    <label for="api_key">API Key</label>
+                    <input type="text" id="api_key" name="api_key">
+                </div>
+
+                <div class="form-group">
+                    <label for="api_secret">API Secret</label>
+                    <input type="text" id="api_secret" name="api_secret">
+                </div>
+
+                <div class="form-group">
+                    <label for="access_token">Access Token</label>
+                    <input type="text" id="access_token" name="access_token">
+                </div>
+            </div>
+
+            <div id="upstox-fields" class="broker-fields" style="display:none;">
+                <h4>Upstox Specific Fields</h4>
+
+                <div class="form-group">
+                    <label for="api_key">API Key</label>
+                    <input type="text" id="api_key" name="api_key">
+                </div>
+
+                <div class="form-group">
+                    <label for="api_secret">API Secret</label>
+                    <input type="text" id="api_secret" name="api_secret">
+                </div>
+
+                <div class="form-group">
+                    <label for="access_token">Access Token</label>
+                    <input type="text" id="access_token" name="access_token">
+                </div>
+            </div>
+
+            <div id="dhan-fields" class="broker-fields" style="display:none;">
+                <h4>Dhan Specific Fields</h4>
+
+                <div class="form-group">
+                    <label for="access_token">Access Token</label>
+                    <input type="text" id="access_token" name="access_token">
+                </div>
+            </div>
+
+            <div id="mstock-fields" class="broker-fields" style="display:none;">
+                <h4>mStock Specific Fields</h4>
+
+                <div class="form-group">
+                    <label for="api_key">API Key</label>
+                    <input type="text" id="api_key" name="api_key">
+                </div>
+
+                <div class="form-group">
+                    <label for="api_secret">API Secret</label>
+                    <input type="text" id="api_secret" name="api_secret">
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Add Broker</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function showBrokerFields(broker) {
+    // Hide all broker fields
+    var brokerFields = document.getElementsByClassName('broker-fields');
+    for (var i = 0; i < brokerFields.length; i++) {
+        brokerFields[i].style.display = 'none';
+    }
+
+    // Show fields for selected broker
+    if (broker) {
+        document.getElementById(broker.toLowerCase() + '-fields').style.display = 'block';
+    }
+}
+</script>
+<script>
+    function togglePasswordVisibility(fieldId) {
+        var field = document.getElementById(fieldId);
+        var icon = event.currentTarget.querySelector('.view-icon');
+
+        if (field.type === "password") {
+            field.type = "text";
+            icon.textContent = "🔒";
+        } else {
+            field.type = "password";
+            icon.textContent = "👁️";
+        }
+    }
+</script>
+
+
+<style>
+.broker-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+}
+.broker-table th, .broker-table td {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+.broker-table th {
+    background-color: #f5f5f5;
+}
+.broker-fields {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+</style>
+<style>
+    .password-container {
+        position: relative;
+        display: flex;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 10px;
+    }
+
+    .password-toggle:hover {
+        color: #3498db;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+
+{% endblock %}

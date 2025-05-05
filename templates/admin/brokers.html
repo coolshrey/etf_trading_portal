@@ -1,0 +1,132 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>All Broker Connections</h2>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-tools">
+    <div class="search-box">
+        <form method="get" action="/admin/brokers">
+            <input type="text" name="search" placeholder="Search by username or broker" value="{{ search }}">
+            <button type="submit" class="btn">Search</button>
+        </form>
+    </div>
+    <div class="filter-box">
+        <form method="get" action="/admin/brokers">
+            <select name="broker">
+                <option value="">All Brokers</option>
+                <option value="FINVASIA" {% if broker_filter == 'FINVASIA' %}selected{% endif %}>Finvasia</option>
+                <option value="ZERODHA" {% if broker_filter == 'ZERODHA' %}selected{% endif %}>Zerodha</option>
+                <option value="UPSTOX" {% if broker_filter == 'UPSTOX' %}selected{% endif %}>Upstox</option>
+                <option value="DHAN" {% if broker_filter == 'DHAN' %}selected{% endif %}>Dhan</option>
+                <option value="MSTOCK" {% if broker_filter == 'MSTOCK' %}selected{% endif %}>mStock</option>
+            </select>
+            <button type="submit" class="btn">Filter</button>
+        </form>
+    </div>
+</div>
+
+<div class="brokers-table">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Broker</th>
+                <th>Broker User ID</th>
+                <th>Is Master</th>
+                <th>Copy</th>
+                <th>Multiplier</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for broker in brokers %}
+            <tr>
+                <td>{{ broker.id }}</td>
+                <td>{{ broker.user.username }}</td>
+                <td>{{ broker.broker_name }}</td>
+                <td>{{ broker.user_id_broker }}</td>
+                <td>{% if broker.is_master %}<span class="badge master">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+                <td>{% if broker.copy %}<span class="badge active">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+                <td>{{ broker.copy_multiplier }}</td>
+                <td>
+                    <a href="/admin/brokers/{{ broker.id }}" class="btn small">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&search={{ search }}&broker={{ broker_filter }}" class="btn small">&lt; Previous</a>
+        {% endif %}
+        <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&search={{ search }}&broker={{ broker_filter }}" class="btn small">Next &gt;</a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .admin-tools {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+    .search-box, .filter-box {
+        display: flex;
+    }
+    .search-box input, .filter-box select {
+        padding: 0.5rem;
+        margin-right: 0.5rem;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f5f5f5;
+    }
+    .btn.small {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        margin-right: 0.25rem;
+    }
+    .badge {
+        background-color: #95a5a6;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+    }
+    .badge.master {
+        background-color: #f39c12;
+    }
+    .badge.active {
+        background-color: #2ecc71;
+    }
+    .pagination {
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .page-info {
+        margin: 0 1rem;
+    }
+</style>
+{% endblock %}

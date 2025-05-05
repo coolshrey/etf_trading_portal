@@ -1,0 +1,91 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Manage Subscription Plans</h2>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-tools">
+    <a href="/admin/plans/new" class="btn">Create New Plan</a>
+</div>
+
+<div class="plans-table">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Duration</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in plans %}
+            <tr>
+                <td>{{ plan.id }}</td>
+                <td>{{ plan.name }}</td>
+                <td>{{ plan.duration_days }} days</td>
+                <td>₹{{ plan.price }}</td>
+                <td>{% if plan.is_active %}<span class="badge active">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</td>
+                <td>{{ plan.created_at|datetime('%Y-%m-%d') }}</td>
+                <td>
+                    <a href="/admin/plans/{{ plan.id }}" class="btn small">View</a>
+                    <a href="/admin/plans/{{ plan.id }}/edit" class="btn small">Edit</a>
+                    <a href="/admin/plans/{{ plan.id }}/toggle" class="btn small {% if plan.is_active %}warning{% else %}success{% endif %}">
+                        {% if plan.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .admin-tools {
+        margin-bottom: 1.5rem;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f5f5f5;
+    }
+    .btn.small {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        margin-right: 0.25rem;
+    }
+    .btn.success {
+        background-color: #2ecc71;
+    }
+    .btn.warning {
+        background-color: #f39c12;
+    }
+    .badge {
+        background-color: #95a5a6;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+    }
+    .badge.active {
+        background-color: #2ecc71;
+    }
+</style>
+{% endblock %}

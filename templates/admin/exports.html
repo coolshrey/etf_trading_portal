@@ -1,0 +1,76 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>System Exports</h2>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="export-section">
+    <h3>Export Broker Connections</h3>
+    <p>Export all broker connections to a CSV file for use with the ETF trading system.</p>
+    <form method="post" action="/admin/exports/brokers">
+        <div class="form-group">
+            <label for="export_path">Export Path (optional)</label>
+            <input type="text" id="export_path" name="export_path" placeholder="e.g., /path/to/accounts.csv">
+            <small>Leave empty to use the default path.</small>
+        </div>
+        <button type="submit" class="btn">Export Broker Connections</button>
+    </form>
+</div>
+
+<div class="export-section">
+    <h3>Export Users</h3>
+    <p>Export user data to a CSV file.</p>
+    <form method="post" action="/admin/exports/users">
+        <button type="submit" class="btn">Export Users</button>
+    </form>
+</div>
+
+<div class="export-section">
+    <h3>Export Subscriptions</h3>
+    <p>Export subscription data to a CSV file.</p>
+    <form method="post" action="/admin/exports/subscriptions">
+        <button type="submit" class="btn">Export Subscriptions</button>
+    </form>
+</div>
+
+<div class="export-section">
+    <h3>Full Database Backup</h3>
+    <p>Create a complete backup of the database.</p>
+    <form method="post" action="/admin/exports/backup">
+        <button type="submit" class="btn">Create Backup</button>
+    </form>
+</div>
+
+<style>
+    .export-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #ddd;
+    }
+    .export-section:last-child {
+        border-bottom: none;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .form-group small {
+        color: #666;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Error - ETF Trading Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Something Went Wrong</h2>
+    <p>We apologize, but an error occurred while processing your request.</p>
+
+    {% if error %}
+    <div class="alert alert-error">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <p><a href="/" class="btn">Return to Home</a></p>
+</div>
+{% endblock %}

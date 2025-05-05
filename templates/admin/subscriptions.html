@@ -1,0 +1,136 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Manage User Subscriptions</h2>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-tools">
+    <div class="search-box">
+        <form method="get" action="/admin/subscriptions">
+            <input type="text" name="search" placeholder="Search by username" value="{{ search }}">
+            <button type="submit" class="btn">Search</button>
+        </form>
+    </div>
+    <div class="filter-box">
+        <form method="get" action="/admin/subscriptions">
+            <select name="status">
+                <option value="">All Statuses</option>
+                <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                <option value="expired" {% if status == 'expired' %}selected{% endif %}>Expired</option>
+            </select>
+            <button type="submit" class="btn">Filter</button>
+        </form>
+    </div>
+</div>
+
+<div class="subscriptions-table">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Plan</th>
+                <th>Start Date</th>
+                <th>Expiry Date</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td>{{ sub.id }}</td>
+                <td>{{ sub.user.username }}</td>
+                <td>{{ sub.plan_name }}</td>
+                <td>{{ sub.start_date|datetime('%Y-%m-%d') }}</td>
+                <td>{{ sub.expiry_date|datetime('%Y-%m-%d') }}</td>
+                <td>
+                    {% if sub.expiry_date > now %}
+                    <span class="badge active">Active</span>
+                    {% else %}
+                    <span class="badge expired">Expired</span>
+                    {% endif %}
+                </td>
+                <td>₹{{ sub.amount }}</td>
+                <td>
+                    <a href="/admin/subscriptions/{{ sub.id }}" class="btn small">View</a>
+                    <a href="/admin/subscriptions/{{ sub.id }}/extend" class="btn small">Extend</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&search={{ search }}&status={{ status }}" class="btn small">&lt; Previous</a>
+        {% endif %}
+        <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}&search={{ search }}&status={{ status }}" class="btn small">Next &gt;</a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .admin-tools {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+    .search-box, .filter-box {
+        display: flex;
+    }
+    .search-box input, .filter-box select {
+        padding: 0.5rem;
+        margin-right: 0.5rem;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f5f5f5;
+    }
+    .btn.small {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        margin-right: 0.25rem;
+    }
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+    }
+    .badge.active {
+        background-color: #2ecc71;
+        color: white;
+    }
+    .badge.expired {
+        background-color: #e74c3c;
+        color: white;
+    }
+    .pagination {
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .page-info {
+        margin: 0 1rem;
+    }
+</style>
+{% endblock %}

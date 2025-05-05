@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Broker Connection - ETF Trading Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Edit Broker Connection</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/brokers/edit/{{ broker.id }}">
+        <div class="form-group">
+            <label for="broker_name">Broker Platform</label>
+            <input type="text" id="broker_name" value="{{ broker.broker_name }}" readonly disabled>
+            <input type="hidden" name="broker_name" value="{{ broker.broker_name }}">
+        </div>
+
+        <div class="form-group">
+            <label for="user_id_broker">User ID / Client ID</label>
+            <input type="text" id="user_id_broker" name="user_id_broker" value="{{ broker.user_id_broker }}" required>
+        </div>
+
+        <!-- Fields for all brokers -->
+        <div class="form-group">
+            <label for="is_master">Is Master Account?</label>
+            <input type="checkbox" id="is_master" name="is_master" {% if broker.is_master %}checked{% endif %}>
+            <small>Master accounts determine which ETFs to buy. Only one master account is allowed.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="copy">Copy Trades?</label>
+            <input type="checkbox" id="copy" name="copy" {% if broker.copy %}checked{% endif %}>
+            <small>Whether this account should copy trades from the master account.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="copy_multiplier">Copy Multiplier</label>
+            <input type="number" id="copy_multiplier" name="copy_multiplier" min="1" value="{{ broker.copy_multiplier }}">
+            <small>Multiply quantities by this value when copying trades.</small>
+        </div>
+
+        <!-- Broker-specific fields -->
+        {% if broker.broker_name == 'FINVASIA' %}
+        <div class="broker-fields">
+            <h4>Finvasia Specific Fields</h4>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" placeholder="Leave blank to keep current">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
+                        <i class="view-icon">👁️</i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="totp_secret">TOTP Secret</label>
+                <input type="text" id="totp_secret" name="totp_secret" value="{{ broker.totp_secret }}">
+            </div>
+
+            <div class="form-group">
+                <label for="vendor_code">Vendor Code</label>
+                <input type="text" id="vendor_code" name="vendor_code" value="{{ broker.vendor_code }}">
+            </div>
+
+            <div class="form-group">
+                <label for="api_secret">API Secret</label>
+                <input type="text" id="api_secret" name="api_secret" value="{{ broker.api_secret }}">
+            </div>
+
+            <div class="form-group">
+                <label for="imei">IMEI</label>
+                <input type="text" id="imei" name="imei" value="{{ broker.imei }}">
+            </div>
+        </div>
+        {% endif %}
+
+        {% if broker.broker_name == 'ZERODHA' %}
+        <div class="broker-fields">
+            <h4>Zerodha Specific Fields</h4>
+
+            <div class="form-group">
+                <label for="api_key">API Key</label>
+                <input type="text" id="api_key" name="api_key" value="{{ broker.api_key }}">
+            </div>
+
+            <div class="form-group">
+                <label for="api_secret">API Secret</label>
+                <input type="text" id="api_secret" name="api_secret" value="{{ broker.api_secret }}">
+            </div>
+
+            <div class="form-group">
+                <label for="access_token">Access Token</label>
+                <input type="text" id="access_token" name="access_token" value="{{ broker.access_token }}">
+            </div>
+        </div>
+        {% endif %}
+
+        {% if broker.broker_name == 'UPSTOX' %}
+        <div class="broker-fields">
+            <h4>Upstox Specific Fields</h4>
+
+            <div class="form-group">
+                <label for="api_key">API Key</label>
+                <input type="text" id="api_key" name="api_key" value="{{ broker.api_key }}">
+            </div>
+
+            <div class="form-group">
+                <label for="api_secret">API Secret</label>
+                <input type="text" id="api_secret" name="api_secret" value="{{ broker.api_secret }}">
+            </div>
+
+            <div class="form-group">
+                <label for="access_token">Access Token</label>
+                <input type="text" id="access_token" name="access_token" value="{{ broker.access_token }}">
+            </div>
+        </div>
+        {% endif %}
+
+        {% if broker.broker_name == 'DHAN' %}
+        <div class="broker-fields">
+            <h4>Dhan Specific Fields</h4>
+
+            <div class="form-group">
+                <label for="access_token">Access Token</label>
+                <input type="text" id="access_token" name="access_token" value="{{ broker.access_token }}">
+            </div>
+        </div>
+        {% endif %}
+
+        {% if broker.broker_name == 'MSTOCK' %}
+        <div class="broker-fields">
+            <h4>mStock Specific Fields</h4>
+
+            <div class="form-group">
+                <label for="api_key">API Key</label>
+                <input type="text" id="api_key" name="api_key" value="{{ broker.api_key }}">
+            </div>
+
+            <div class="form-group">
+                <label for="api_secret">API Secret</label>
+                <input type="text" id="api_secret" name="api_secret" value="{{ broker.api_secret }}">
+            </div>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn">Update Broker</button>
+        <a href="/brokers" class="btn">Cancel</a>
+    </form>
+</div>
+
+<style>
+    .broker-fields {
+        margin: 1rem 0;
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+    }
+</style>
+<style>
+    .password-container {
+        position: relative;
+        display: flex;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 10px;
+    }
+
+    .password-toggle:hover {
+        color: #3498db;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+<script>
+    function togglePasswordVisibility(fieldId) {
+        var field = document.getElementById(fieldId);
+        var icon = event.currentTarget.querySelector('.view-icon');
+
+        if (field.type === "password") {
+            field.type = "text";
+            icon.textContent = "🔒";
+        } else {
+            field.type = "password";
+            icon.textContent = "👁️";
+        }
+    }
+</script>
+
+{% endblock %}

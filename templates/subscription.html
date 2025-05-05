@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subscription - ETF Trading Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Manage Your Subscription</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <div class="subscription-status">
+        <h3>Current Subscription Status</h3>
+
+        {% if current_subscription %}
+        <div class="current-plan">
+            <p><strong>Plan:</strong> {{ current_subscription.plan_name }}</p>
+            <p><strong>Start Date:</strong> {{ current_subscription.start_date|datetime('%d-%m-%Y') }}</p>
+            <p><strong>Expiry Date:</strong> {{ current_subscription.expiry_date|datetime('%d-%m-%Y') }}</p>
+            <p><strong>Status:</strong>
+                {% if current_subscription.expiry_date > now %}  <!-- CORRECT: now is a datetime object -->
+                <span class="status-active">Active</span>
+                {% else %}
+                <span class="status-expired">Expired</span>
+                {% endif %}
+
+            </p>
+            <p><strong>Days Remaining:</strong>
+                {% if current_subscription.expiry_date > now %}
+                {% set days = (current_subscription.expiry_date - now).days %}
+                {{ days }} day{{ 's' if days != 1 else '' }}
+                {% else %}
+                0 days (expired)
+                {% endif %}
+            </p>
+        </div>
+        {% else %}
+        <p>You don't have an active subscription.</p>
+        {% endif %}
+    </div>
+
+    <div class="subscription-plans">
+        <h3>Available Plans</h3>
+
+        <div class="plans-container">
+            {% for plan in plans %}
+            <div class="plan-card">
+                <h4>{{ plan.name }}</h4>
+                <p class="plan-price">₹{{ plan.price }}</p>
+                <p class="plan-duration">{{ plan.duration_days // 30 }} Month{{ 's' if plan.duration_days // 30 != 1 else '' }}</p>
+                <p class="plan-description">{{ plan.description }}</p>
+
+                {% if plan.features %}
+                <div class="plan-features">
+                    <h5>Features:</h5>
+                    <ul>
+                        {% for feature in plan.features.split('\n') %}
+                        {% if feature.strip() %}
+                        <li>{{ feature }}</li>
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="post" action="/subscription/purchase">
+                    <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                    <button type="submit" class="btn">Purchase</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="subscription-history">
+        <h3>Subscription History</h3>
+
+        {% if subscription_history %}
+        <table class="subscription-table">
+            <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Start Date</th>
+                <th>Expiry Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for sub in subscription_history %}
+            <tr>
+                <td>{{ sub.plan_name }}</td>
+                <td>{{ sub.start_date|datetime('%d-%m-%Y') }}</td>
+                <td>{{ sub.expiry_date|datetime('%d-%m-%Y') }}</td>
+                <td>₹{{ sub.amount }}</td>
+                <td>
+                    {% if sub.expiry_date > now %}
+                    <span class="status-active">Active</span>
+                    {% else %}
+                    <span class="status-expired">Expired</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No subscription history found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .subscription-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    .subscription-table th,
+    .subscription-table td {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    .subscription-table th {
+        background-color: #f5f5f5;
+    }
+    .current-plan {
+        background-color: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 5px;
+        margin-bottom: 2rem;
+    }
+    .status-active {
+        color: #28a745;
+        font-weight: bold;
+    }
+    .status-expired {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .plans-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+    .plan-card {
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 1.5rem;
+        width: calc(33.333% - 1rem);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .plan-price {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 0.5rem 0;
+    }
+    .plan-duration {
+        color: #666;
+        margin-bottom: 1rem;
+    }
+    .plan-features {
+        margin-top: 1rem;
+    }
+    .plan-features ul {
+        padding-left: 1rem;
+    }
+    @media (max-width: 768px) {
+        .plan-card {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
