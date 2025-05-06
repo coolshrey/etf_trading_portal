@@ -1,0 +1,78 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>User Trading Accounts</h2>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="admin-tools">
+    <div class="search-box">
+        <form method="get" action="/admin/trading_accounts">
+            <input type="text" name="search" placeholder="Search by username or broker ID" value="{{ search }}">
+            <button type="submit" class="btn">Search</button>
+        </form>
+    </div>
+    <div class="filter-box">
+        <form method="get" action="/admin/trading_accounts">
+            <select name="broker">
+                <option value="">All Brokers</option>
+                <option value="FINVASIA" {% if broker_filter == 'FINVASIA' %}selected{% endif %}>Finvasia</option>
+                <option value="ZERODHA" {% if broker_filter == 'ZERODHA' %}selected{% endif %}>Zerodha</option>
+                <option value="UPSTOX" {% if broker_filter == 'UPSTOX' %}selected{% endif %}>Upstox</option>
+                <option value="DHAN" {% if broker_filter == 'DHAN' %}selected{% endif %}>Dhan</option>
+                <option value="MSTOCK" {% if broker_filter == 'MSTOCK' %}selected{% endif %}>mStock</option>
+            </select>
+            <button type="submit" class="btn">Filter</button>
+        </form>
+    </div>
+</div>
+
+<div class="accounts-table">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Customer ID</th>
+                <th>Broker</th>
+                <th>Broker User ID</th>
+                <th>Is Master</th>
+                <th>Copy</th>
+                <th>Multiplier</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in accounts %}
+            <tr>
+                <td>{{ account.id }}</td>
+                <td>{{ account.user.username }}</td>
+                <td>{{ account.user.customer_id }}</td>
+                <td>{{ account.broker_name }}</td>
+                <td>{{ account.user_id_broker }}</td>
+                <td>{% if account.is_master %}<span class="badge master">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+                <td>{% if account.copy %}<span class="badge active">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+                <td>{{ account.copy_multiplier }}</td>
+                <td>
+                    <a href="/admin/trading_accounts/{{ account.id }}" class="btn small">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <!-- Pagination code remains the same -->
+    </div>
+</div>
+
+<style>
+    /* Existing styles */
+</style>
+{% endblock %}

@@ -38,18 +38,20 @@
                 <th>User</th>
                 <th>Trading Account</th>
                 <th>Broker</th>
+                <th>Plan</th>
                 <th>Expiry Date</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for broker in subscriptions %}
+            {% for broker, user in subscriptions %}
             <tr>
                 <td>{{ broker.id }}</td>
-                <td>{{ broker.user.username }}</td>
+                <td>{{ user.username }}</td>
                 <td>{{ broker.user_id_broker }}</td>
                 <td>{{ broker.broker_name }}</td>
+                <td>Default Plan</td>
                 <td>{% if broker.subscription_expiry %}{{ broker.subscription_expiry|datetime('%Y-%m-%d') }}{% else %}Not Set{% endif %}</td>
                 <td>
                     {% if broker.subscription_status == 'Active' %}

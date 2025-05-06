@@ -15,6 +15,8 @@ from functools import wraps
 import os
 import pandas as pd
 import uuid
+from sqlalchemy.sql import text
+
 
 
 # Load environment variables
@@ -54,7 +56,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     last_login = db.Column(db.DateTime)
     # Add this new line below:
-    # customer_id = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    customer_id = db.Column(db.String(50), unique=True, nullable=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -85,11 +87,12 @@ class Broker(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     last_updated = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
+    # Add these new fields
+    subscription_expiry = db.Column(db.DateTime, nullable=True)
+    subscription_status = db.Column(db.String(20), default='Inactive')
+
     # Relationship to user
     user = db.relationship('User', backref=db.backref('brokers', lazy=True))
-
-    def __repr__(self):
-        return f'<Broker {self.broker_name} for {self.user_id_broker}>'
 
 
 # Add this after the Broker model
@@ -322,9 +325,15 @@ def register_page():
             error = "Passwords do not match"
         else:
             # Create new user
+            # Get the next customer ID (ADD THIS CODE)
+            result = db.session.execute(db.text("SELECT nextval('user_customer_id_seq')"))
+            next_id = result.scalar()
+            customer_id = f"smarteft_user_{next_id}"
+
             user = User(
                 username=username,
-                email=email
+                email=email,
+                customer_id=customer_id  # ADD THIS LINE HERE
             )
             user.set_password(password)
 
@@ -602,42 +611,37 @@ def confirm_subscription():
 
     plan = SubscriptionPlan.query.get_or_404(plan_id)
 
-    # Get current subscription if exists
-    current_subscription = Subscription.query.filter_by(user_id=user_id).order_by(
-        Subscription.expiry_date.desc()).first()
-
-    # Calculate start and expiry dates
-    if current_subscription and current_subscription.expiry_date > datetime.datetime.now():
-        # If there's an active subscription, extend it
-        start_date = current_subscription.expiry_date
-    else:
-        # Otherwise start from now
-        start_date = datetime.datetime.now()
-
+    # Calculate expiry date
+    start_date = datetime.datetime.now()
     expiry_date = start_date + timedelta(days=plan.duration_days)
 
-    # Create new subscription
+    # Create subscription record (keep this for history)
     subscription = Subscription(
         user_id=user_id,
         plan_name=plan.name,
         start_date=start_date,
         expiry_date=expiry_date,
-        payment_status='Paid',  # Simulated payment
+        payment_status='Paid',
         payment_method=payment_method,
         payment_id=f"SIM-{int(datetime.datetime.now().timestamp())}",
         amount=plan.price
     )
-
     db.session.add(subscription)
+
+    # Update all broker records for this user
+    user_brokers = Broker.query.filter_by(user_id=user_id).all()
+    for broker in user_brokers:
+        broker.subscription_expiry = expiry_date
+        broker.subscription_status = 'Active'
+
     db.session.commit()
 
-    # Update all broker CSVs with new subscription info
+    # Export updated broker data to CSV
     all_brokers = Broker.query.all()
     export_brokers_to_csv(all_brokers)
 
     flash(f"You have successfully purchased the {plan.name} plan!", "success")
     return redirect(url_for('subscription'))
-
 
 
 # Add this after all your routes
@@ -649,36 +653,6 @@ def handle_error(e):
     # In production, show a user-friendly error page
     error_message = str(e)
     return render_template('error.html', error=error_message), 500
-
-
-# Create admin command
-@app.cli.command("create-admin")
-def create_admin():
-    """Create an admin user."""
-    username = input("Enter admin username: ")
-    email = input("Enter admin email: ")
-    password = input("Enter admin password: ")
-
-    # Check if user already exists
-    if User.query.filter_by(username=username).first():
-        print("Username already exists!")
-        return
-
-    if User.query.filter_by(email=email).first():
-        print("Email already exists!")
-        return
-
-    user = User(
-        username=username,
-        email=email,
-        is_admin=True
-    )
-    user.set_password(password)
-
-    db.session.add(user)
-    db.session.commit()
-
-    print(f"Admin user {username} created successfully!")
 
 
 def create_default_plans():
@@ -764,6 +738,47 @@ def admin_users():
     )
 
 
+@app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        customer_id = request.form.get('customer_id')
+        is_admin = 'is_admin' in request.form
+
+        # Check if username already exists (for another user)
+        existing_user = User.query.filter(User.username == username, User.id != user_id).first()
+        if existing_user:
+            flash("Username already taken", "error")
+            return render_template('admin/edit_user.html', user=user, active_page='users')
+
+        # Check if email already exists (for another user)
+        existing_email = User.query.filter(User.email == email, User.id != user_id).first()
+        if existing_email:
+            flash("Email already taken", "error")
+            return render_template('admin/edit_user.html', user=user, active_page='users')
+
+        # Update user
+        user.username = username
+        user.email = email
+        user.customer_id = customer_id
+        user.is_admin = is_admin
+
+        # Update password if provided
+        password = request.form.get('password')
+        if password and len(password) >= 8:
+            user.set_password(password)
+
+        db.session.commit()
+        flash("User updated successfully", "success")
+        return redirect(url_for('admin_users'))
+
+    return render_template('admin/edit_user.html', user=user, active_page='users')
+
+
 # Admin Plans
 @app.route('/admin/plans')
 @admin_required
@@ -786,17 +801,18 @@ def admin_subscriptions():
     search = request.args.get('search', '')
     status = request.args.get('status', '')
 
-    query = Subscription.query.join(User, User.id == Subscription.user_id)
+    # Query broker table for subscription data, joined with user table
+    query = Broker.query.join(User, User.id == Broker.user_id)
 
     if search:
         query = query.filter(User.username.ilike(f'%{search}%'))
 
     if status == 'active':
-        query = query.filter(Subscription.expiry_date > datetime.datetime.now())
-    elif status == 'expired':
-        query = query.filter(Subscription.expiry_date <= datetime.datetime.now())
+        query = query.filter(Broker.subscription_status == 'Active')
+    elif status == 'inactive':
+        query = query.filter(Broker.subscription_status == 'Inactive')
 
-    pagination = query.order_by(Subscription.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = query.order_by(Broker.user_id).paginate(page=page, per_page=per_page, error_out=False)
     subscriptions = pagination.items
 
     return render_template(
@@ -812,9 +828,9 @@ def admin_subscriptions():
 
 
 # Admin Broker Connections
-@app.route('/admin/brokers')
+@app.route('/admin/trading_accounts')
 @admin_required
-def admin_brokers():
+def admin_trading_accounts():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     search = request.args.get('search', '')
@@ -841,7 +857,8 @@ def admin_brokers():
         total_pages=pagination.pages or 1,
         search=search,
         broker_filter=broker_filter,
-        active_page='brokers'
+        active_page='trading_accounts',
+
     )
 
 
@@ -1041,6 +1058,97 @@ def admin_backup_database():
 
     return redirect(url_for('admin_exports'))
 
+
+@app.route('/admin/subscriptions/edit/<int:broker_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_subscription(broker_id):
+    broker = Broker.query.get_or_404(broker_id)
+    user = User.query.get(broker.user_id)
+
+    if request.method == 'POST':
+        # Update subscription data
+        expiry_date_str = request.form.get('expiry_date')
+        status = request.form.get('status')
+
+        try:
+            expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%d')
+            broker.subscription_expiry = expiry_date
+            broker.subscription_status = status
+            db.session.commit()
+
+            # Export to CSV to update trading system
+            all_brokers = Broker.query.all()
+            export_brokers_to_csv(all_brokers)
+
+            flash('Subscription updated successfully', 'success')
+            return redirect(url_for('admin_subscriptions'))
+        except Exception as e:
+            flash(f'Error updating subscription: {str(e)}', 'error')
+
+    return render_template(
+        'admin/edit_subscription.html',
+        broker=broker,
+        user=user,
+        active_page='subscriptions'
+    )
+
+
+# Create admin command
+@app.cli.command("create-admin")
+def create_admin():
+    """Create an admin user."""
+    username = input("Enter admin username: ")
+    email = input("Enter admin email: ")
+    password = input("Enter admin password: ")
+
+    # Check if user already exists
+    if User.query.filter_by(username=username).first():
+        print("Username already exists!")
+        return
+
+    if User.query.filter_by(email=email).first():
+        print("Email already exists!")
+        return
+
+    user = User(
+        username=username,
+        email=email,
+        is_admin=True
+    )
+    user.set_password(password)
+
+    db.session.add(user)
+    db.session.commit()
+
+    print(f"Admin user {username} created successfully!")
+
+
+@app.cli.command("check-subscriptions")
+def check_subscriptions():
+    """Check and update expired subscriptions."""
+    with app.app_context():
+        now = datetime.datetime.now()
+        expired_brokers = Broker.query.filter(
+            Broker.subscription_expiry < now,
+            Broker.subscription_status == 'Active'
+        ).all()
+
+        if expired_brokers:
+            for broker in expired_brokers:
+                broker.subscription_status = 'Inactive'
+                print(f"Marking broker {broker.id} ({broker.user_id_broker}) as inactive")
+
+            db.session.commit()
+            print(f"Updated {len(expired_brokers)} expired subscriptions")
+
+            # Export updated CSV
+            all_brokers = Broker.query.all()
+            export_brokers_to_csv(all_brokers)
+        else:
+            print("No expired subscriptions found")
+
+
+# Run the app
 # Run the app
 if __name__ == '__main__':
     try:
@@ -1063,6 +1171,23 @@ if __name__ == '__main__':
                 db.metadata.tables['subscription'].create(db.engine)
                 print("subscription table created.")
 
+            # Check if customer_id column exists in User table
+            print("Checking for customer_id column in User table...")
+            user_columns = [col['name'] for col in inspector.get_columns('user')]
+            if 'customer_id' not in user_columns:
+                print("Adding customer_id column to User table...")
+                # Use raw SQL to add the column with a default value since SQLAlchemy doesn't handle this well
+                db.session.execute(db.text('ALTER TABLE "user" ADD COLUMN customer_id VARCHAR(36) UNIQUE'))
+                db.session.commit()
+
+                # Now generate and set customer_id for all existing users
+                print("Setting customer_id for existing users...")
+                users = User.query.all()
+                for user in users:
+                    user.customer_id = str(uuid.uuid4())
+                db.session.commit()
+                print("customer_id column added and populated for all users.")
+
             # Check for admin user
             admin = User.query.filter_by(is_admin=True).first()
             if not admin:
@@ -1070,7 +1195,8 @@ if __name__ == '__main__':
                 admin_user = User(
                     username="admin",
                     email="admin@example.com",
-                    is_admin=True
+                    is_admin=True,
+                    customer_id=str(uuid.uuid4())
                 )
                 admin_user.set_password("adminpassword")
                 db.session.add(admin_user)

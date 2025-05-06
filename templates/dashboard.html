@@ -8,9 +8,11 @@
 
     <div class="dashboard-info">
         <p>Your email: {{ user.email }}</p>
+        <p>Customer ID: {{ user.customer_id }}</p>
         <p>Account created: {{ user.created_at|datetime('%B %d, %Y') }}</p>
         <p>Last login: {% if user.last_login %}{{ user.last_login|datetime('%B %d, %Y at %H:%M') }}{% else %}First login{% endif %}</p>
     </div>
+
 
     {% if user.is_admin %}
     <div class="admin-section">
@@ -27,8 +29,9 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value">{{ broker_count }}</div>
-                <div class="stat-label">Broker Connections</div>
+                <div class="stat-label">Trading Accounts</div>
             </div>
+
         </div>
 
         <div class="admin-actions">
@@ -36,40 +39,48 @@
             <a href="/admin/users" class="btn">Manage Users</a>
             <a href="/admin/subscriptions" class="btn">Manage Subscriptions</a>
             <a href="/admin/plans" class="btn">Manage Plans</a>
+            <a href="/admin/trading_accounts" class="btn">Manage User Trading Accounts</a>
             <a href="/admin/exports" class="btn">Exports & Backup</a>
         </div>
+
     </div>
     {% endif %}
 
     <div class="user-section">
         <h3>Your Account</h3>
+
+        {% if not user.is_admin %}
+        <!-- Show subscription info only for regular users -->
         {% if current_subscription %}
-            <div class="subscription-info">
-                <h4>Current Subscription</h4>
-                <p>Plan: <strong>{{ current_subscription.plan_name }}</strong></p>
-                <p>Expires: <strong>{{ current_subscription.expiry_date|datetime('%B %d, %Y') }}</strong></p>
-                <p>Status:
-                    {% if current_subscription.expiry_date > now %}
-                        <span class="status-active">Active</span>
-                    {% else %}
-                        <span class="status-expired">Expired</span>
-                    {% endif %}
-                </p>
-            </div>
+        <div class="subscription-info">
+            <h4>Current Subscription</h4>
+            <p>Plan: <strong>{{ current_subscription.plan_name }}</strong></p>
+            <p>Expires: <strong>{{ current_subscription.expiry_date|datetime('%B %d, %Y') }}</strong></p>
+            <p>Status:
+                {% if current_subscription.expiry_date > now %}
+                <span class="status-active">Active</span>
+                {% else %}
+                <span class="status-expired">Expired</span>
+                {% endif %}
+            </p>
+        </div>
         {% else %}
-            <div class="subscription-info">
-                <h4>Subscription</h4>
-                <p>You don't have an active subscription.</p>
-                <a href="/subscription" class="btn">Get a Subscription</a>
-            </div>
+        <div class="subscription-info">
+            <h4>Subscription</h4>
+            <p>You don't have an active subscription.</p>
+            <a href="/subscription" class="btn">Get a Subscription</a>
+        </div>
         {% endif %}
+        {% endif %}
+
+
 
         <div class="broker-info">
             <h4>Broker Connections</h4>
             {% if broker_connections %}
-                <p>You have {{ broker_connections|length }} broker connection{{ 's' if broker_connections|length != 1 else '' }}.</p>
+            <p>You have {{ broker_connections|length }} broker connection{{ 's' if broker_connections|length != 1 else '' }}.</p>
             {% else %}
-                <p>You don't have any broker connections yet.</p>
+            <p>You don't have any broker connections yet.</p>
             {% endif %}
         </div>
 
