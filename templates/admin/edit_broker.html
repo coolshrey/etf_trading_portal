@@ -1,0 +1,240 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Edit Broker Connection</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_view_broker', broker_id=broker.id) }}" class="btn">Back to Broker Details</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="edit-broker-form">
+    <form action="{{ url_for('admin_edit_broker', broker_id=broker.id) }}" method="post">
+        <div class="form-group">
+            <label for="user_id">User</label>
+            <select id="user_id" name="user_id" required>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if user.id == broker.user_id %}selected{% endif %}>
+                    {{ user.username }} ({{ user.email }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="broker_name">Broker Name</label>
+            <input type="text" id="broker_name" name="broker_name" value="{{ broker.broker_name }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="broker_user_id">Broker User ID</label>
+            <input type="text" id="broker_user_id" name="broker_user_id" value="{{ broker.broker_user_id }}" required>
+        </div>
+
+        <div class="form-check">
+            <input type="checkbox" id="is_master" name="is_master" {% if broker.is_master %}checked{% endif %}>
+            <label for="is_master">Is Master</label>
+        </div>
+
+        <div class="form-check">
+            <input type="checkbox" id="copy" name="copy" {% if broker.copy %}checked{% endif %}>
+            <label for="copy">Copy</label>
+        </div>
+
+        <div class="form-group">
+            <label for="multiplier">Multiplier</label>
+            <input type="number"
+                   step="1"
+                   min="1"
+                   id="multiplier"
+                   name="multiplier"
+                   value="{{ broker.multiplier|int }}"
+                   required>
+        </div>
+
+        <!-- For API Key -->
+        <div class="form-group">
+            <label for="api_key">API Key</label>
+            <input type="text" id="api_key" name="api_key" value="{{ broker.api_key }}">
+        </div>
+
+        <!-- For API Secret -->
+        <div class="form-group">
+            <label for="api_secret">API Secret</label>
+            <input type="text" id="api_secret" name="api_secret" value="{{ broker.api_secret }}">
+        </div>
+
+        <!-- For TOTP Secret -->
+        <div class="form-group">
+            <label for="totp_secret">TOTP Secret</label>
+            <input type="text" id="totp_secret" name="totp_secret" value="{{ broker.totp_secret }}">
+        </div>
+
+        <!-- For Access Token -->
+        <div class="form-group">
+            <label for="access_token">Access Token</label>
+            <input type="text" id="access_token" name="access_token" value="{{ broker.access_token }}">
+        </div>
+
+        <!-- For Subscription Expiry -->
+        <div class="form-group">
+            <label for="subscription_expiry">Subscription Expiry</label>
+            <input type="datetime-local" id="subscription_expiry" name="subscription_expiry"
+                   value="{{ broker.subscription_expiry.strftime('%Y-%m-%dT%H:%M') if broker.subscription_expiry else '' }}">
+        </div>
+
+        <!-- For Subscription Status -->
+        <div class="form-group">
+            <label for="subscription_status">Subscription Status</label>
+            <select id="subscription_status" name="subscription_status">
+                <option value="Active" {% if broker.subscription_status == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Inactive" {% if broker.subscription_status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                <option value="Pending" {% if broker.subscription_status == 'Pending' %}selected{% endif %}>Pending</option>
+            </select>
+        </div>
+
+
+
+        <div class="action-buttons">
+            <button type="submit" class="btn">Save Changes</button>
+            <a href="{{ url_for('admin_view_broker', broker_id=broker.id) }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .edit-broker-form {
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-check {
+        margin-bottom: 1rem;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+
+    .form-help {
+        font-size: 0.85rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+
+    .form-check input {
+        margin-right: 0.5rem;
+    }
+
+    .form-check label {
+        display: inline-block;
+        font-weight: normal;
+    }
+
+    .action-buttons {
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 3px;
+        display: inline-block;
+        text-decoration: none;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        border: none;
+        background-color: #3498db;
+        color: white;
+    }
+
+    .btn.secondary {
+        background-color: #95a5a6;
+    }
+
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 3px;
+    }
+
+    .alert-error {
+        background-color: #fadbd8;
+        color: #c0392b;
+        border: 1px solid #e74c3c;
+    }
+
+    .alert-success {
+        background-color: #d5f5e3;
+        color: #27ae60;
+        border: 1px solid #2ecc71;
+    }
+
+    .action-bar {
+        margin-bottom: 1.5rem;
+    }
+</style>
+<!-- Add this script to your edit_broker.html template -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get the user dropdown element
+    const userSelect = document.getElementById('user_id');
+
+    // Define a map of user data (this would ideally come from your backend)
+    const userData = {
+        {% for user in users %}
+        "{{ user.id }}": {
+            username: "{{ user.username }}",
+            email: "{{ user.email }}",
+            customer_id: "{{ user.customer_id }}"
+            // Add other user fields you might need
+        },
+        {% endfor %}
+    };
+
+    // Listen for changes on the user dropdown
+    userSelect.addEventListener('change', function() {
+        const selectedUserId = this.value;
+        const user = userData[selectedUserId];
+
+        if (user) {
+            // You can update any fields that should change based on user selection
+            // For example, if you want to suggest a broker user ID based on username:
+            const brokerUserIdField = document.getElementById('broker_user_id');
+            if (brokerUserIdField) {
+                // Only update if the field is empty or if you want to always suggest
+                if (!brokerUserIdField.value || confirm("Update Broker User ID to match the selected user?")) {
+                    brokerUserIdField.value = user.username.toUpperCase();
+                }
+            }
+
+            // You can update other fields as needed
+            // For example:
+            // document.getElementById('some_other_field').value = user.some_property;
+        }
+    });
+});
+</script>
+
+{% endblock %}

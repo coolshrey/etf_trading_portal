@@ -94,6 +94,22 @@ class Broker(db.Model):
     # Relationship to user
     user = db.relationship('User', backref=db.backref('brokers', lazy=True))
 
+    @property
+    def broker_user_id(self):
+        return self.user_id_broker
+
+    @broker_user_id.setter
+    def broker_user_id(self, value):
+        self.user_id_broker = value
+
+    @property
+    def multiplier(self):
+        return self.copy_multiplier
+
+    @multiplier.setter
+    def multiplier(self, value):
+        self.copy_multiplier = value
+
 
 # Add this after the Broker model
 class Subscription(db.Model):
@@ -1091,6 +1107,89 @@ def edit_subscription(broker_id):
         user=user,
         active_page='subscriptions'
     )
+
+
+@app.route('/admin/brokers/<int:broker_id>', methods=['GET'])
+@admin_required
+def admin_view_broker(broker_id):
+    broker = Broker.query.get_or_404(broker_id)
+    return render_template('admin/view_broker.html', broker=broker, active_page='brokers')
+
+
+@app.route('/admin/brokers/<int:broker_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_broker(broker_id):
+    broker = Broker.query.get_or_404(broker_id)
+    users = User.query.all()
+    # Filter out admin users from the dropdown list
+    users = User.query.filter_by(is_admin=False).all()
+
+    if request.method == 'POST':
+        # Get form data with correct field names
+        user_id = request.form.get('user_id', type=int)
+        broker_name = request.form.get('broker_name')
+        broker_user_id = request.form.get('broker_user_id')  # This will update user_id_broker via property
+        is_master = 'is_master' in request.form
+        copy = 'copy' in request.form
+        multiplier = request.form.get('multiplier', type=float)  # This will update copy_multiplier via property
+
+        # Additional fields
+        api_key = request.form.get('api_key')
+        api_secret = request.form.get('api_secret')
+        totp_secret = request.form.get('totp_secret')
+        access_token = request.form.get('access_token')
+        subscription_status = request.form.get('subscription_status')
+
+        # Handle subscription_expiry
+        subscription_expiry_str = request.form.get('subscription_expiry')
+
+        # Update broker fields
+        broker.user_id = user_id
+        broker.broker_name = broker_name
+        broker.broker_user_id = broker_user_id  # This uses the property
+        broker.is_master = is_master
+        broker.copy = copy
+        broker.multiplier = multiplier  # This uses the property
+
+        # Update additional fields
+        broker.api_key = api_key
+        broker.api_secret = api_secret
+        broker.totp_secret = totp_secret
+        broker.access_token = access_token
+        broker.subscription_status = subscription_status
+
+        # Handle subscription_expiry with proper error checking
+        if subscription_expiry_str:
+            try:
+                broker.subscription_expiry = datetime.datetime.strptime(subscription_expiry_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Invalid date format for Subscription Expiry', 'error')
+                return render_template('admin/edit_broker.html', broker=broker, users=users, active_page='brokers')
+        else:
+            broker.subscription_expiry = None
+
+        # Save changes
+        db.session.commit()
+        flash('Broker updated successfully', 'success')
+        return redirect(url_for('admin_view_broker', broker_id=broker.id))
+
+    return render_template('admin/edit_broker.html', broker=broker, users=users, active_page='brokers')
+
+
+@app.route('/admin/brokers/<int:broker_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_broker(broker_id):
+    broker = Broker.query.get_or_404(broker_id)
+
+    # Store the broker name for the flash message
+    broker_name = broker.broker_name
+
+    # Delete the broker
+    db.session.delete(broker)
+    db.session.commit()
+
+    flash(f'Broker "{broker_name}" has been deleted', 'success')
+    return redirect(url_for('admin_trading_accounts'))
 
 
 # Create admin command
