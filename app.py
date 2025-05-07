@@ -10,7 +10,7 @@ import datetime
 from utils.csv_exporter import export_brokers_to_csv
 from datetime import timedelta
 from functools import wraps
-from flask import flash, redirect, url_for, session, g, request, render_template
+from flask import flash, redirect, url_for, session, g, request, render_template, jsonify
 from functools import wraps
 import os
 import pandas as pd
@@ -115,6 +115,7 @@ class Broker(db.Model):
 class Subscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    plan_id = db.Column(db.Integer)
     plan_name = db.Column(db.String(50), nullable=False)
     start_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     expiry_date = db.Column(db.DateTime, nullable=False)
@@ -124,8 +125,21 @@ class Subscription(db.Model):
     amount = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
+    # # Define relationship to Plan
+    # plan = db.relationship(
+    #     'Plan',
+    #     primaryjoin="Subscription.plan_id == Plan.id",
+    #     foreign_keys=[plan_id],
+    #     backref=db.backref('subscriptions', lazy=True)
+    # )
+
     # Relationship to user
-    user = db.relationship('User', backref=db.backref('subscriptions', lazy=True))
+    user = db.relationship(
+        'User',
+        primaryjoin="Subscription.user_id == User.id",
+        backref=db.backref('subscriptions', lazy=True),
+        foreign_keys=[user_id]
+    )
 
     def __repr__(self):
         return f'<Subscription {self.plan_name} for {self.user_id}>'
@@ -133,7 +147,11 @@ class Subscription(db.Model):
 
 # Add this after the Subscription model
 class SubscriptionPlan(db.Model):
+    __tablename__ = 'subscription_plan'  # Keep your existing table name
+
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer)  # Keep existing columns
+    plan_id = db.Column(db.Integer)
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
     duration_days = db.Column(db.Integer, nullable=False)
@@ -144,6 +162,59 @@ class SubscriptionPlan(db.Model):
 
     def __repr__(self):
         return f'<SubscriptionPlan {self.name}>'
+
+
+# Define the Plan model
+class Plan(db.Model):
+    __tablename__ = 'plans'  # Make sure this matches what you check for in your startup code
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    duration = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    description = db.Column(db.Text)
+    features = db.Column(db.Text)
+    status = db.Column(db.String(20), default='Active')
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now)
+
+    # Relationship with subscriptions
+    subscriptions = db.relationship(
+        'Subscription',
+        primaryjoin="Subscription.plan_id == Plan.id",
+        backref=db.backref('plan', lazy=True),
+        lazy=True,
+        foreign_keys="Subscription.plan_id"
+    )
+
+    def __repr__(self):
+        return f'<Plan {self.name}>'
+
+
+# Add this with your other model definitions in app.py
+class SubscriptionHistory(db.Model):
+    __tablename__ = 'subscription_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer)
+    plan_id = db.Column(db.Integer)
+    start_date = db.Column(db.DateTime, default=datetime.datetime.now)
+    end_date = db.Column(db.DateTime)
+    status = db.Column(db.String(20))
+
+    # Define relationships if needed
+    user = db.relationship(
+        'User',
+        primaryjoin="SubscriptionHistory.user_id == User.id",
+        foreign_keys=[user_id],
+        backref=db.backref('subscription_history', lazy=True)
+    )
+
+    plan = db.relationship(
+        'Plan',
+        primaryjoin="SubscriptionHistory.plan_id == Plan.id",
+        foreign_keys=[plan_id],
+        backref=db.backref('subscription_history', lazy=True)
+    )
 
 
 # Before request handler to load user
@@ -795,51 +866,47 @@ def admin_edit_user(user_id):
     return render_template('admin/edit_user.html', user=user, active_page='users')
 
 
-# Admin Plans
-@app.route('/admin/plans')
-@admin_required
-def admin_plans():
-    plans = SubscriptionPlan.query.order_by(SubscriptionPlan.id).all()
-
-    return render_template(
-        'admin/plans.html',
-        plans=plans,
-        active_page='plans'
-    )
-
-
 # Admin Subscriptions
 @app.route('/admin/subscriptions')
 @admin_required
 def admin_subscriptions():
+    """Display all user subscriptions."""
+    # Get search parameters
+    search_term = request.args.get('search', '')
+    status_filter = request.args.get('status', 'All Statuses')
+
+    # Pagination parameters
     page = request.args.get('page', 1, type=int)
-    per_page = 10
-    search = request.args.get('search', '')
-    status = request.args.get('status', '')
+    per_page = 10  # Adjust as needed
 
-    # Query broker table for subscription data, joined with user table
-    query = Broker.query.join(User, User.id == Broker.user_id)
+    # Build the query
+    query = Subscription.query.join(User)
 
-    if search:
-        query = query.filter(User.username.ilike(f'%{search}%'))
+    # Important: Add this to load the related plan data
+    query = query.options(db.joinedload(Subscription.plan))
 
-    if status == 'active':
-        query = query.filter(Broker.subscription_status == 'Active')
-    elif status == 'inactive':
-        query = query.filter(Broker.subscription_status == 'Inactive')
+    # Apply filters
+    if search_term:
+        query = query.filter(User.username.ilike(f'%{search_term}%'))
 
-    pagination = query.order_by(Broker.user_id).paginate(page=page, per_page=per_page, error_out=False)
-    subscriptions = pagination.items
+    if status_filter != 'All Statuses':
+        query = query.filter(Subscription.status == status_filter)
+
+    # Paginate results
+    total_items = query.count()
+    total_pages = (total_items + per_page - 1) // per_page  # Ceiling division
+
+    # Get items for current page
+    subscriptions = query.order_by(Subscription.id).offset((page - 1) * per_page).limit(per_page).all()
 
     return render_template(
         'admin/subscriptions.html',
         subscriptions=subscriptions,
-        page=page,
-        total_pages=pagination.pages or 1,
-        search=search,
-        status=status,
-        now=datetime.datetime.now(),
-        active_page='subscriptions'
+        search_term=search_term,
+        status_filter=status_filter,
+        page=1,
+        total_pages=1,
+        total_items=total_items
     )
 
 
@@ -1088,6 +1155,7 @@ def edit_subscription(broker_id):
 
         try:
             expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%d')
+            # expiry_date = datetime.strptime(request.form['expiry_date'], '%d / %m / %Y')
             broker.subscription_expiry = expiry_date
             broker.subscription_status = status
             db.session.commit()
@@ -1192,6 +1260,314 @@ def admin_delete_broker(broker_id):
     return redirect(url_for('admin_trading_accounts'))
 
 
+@app.route('/admin/get_broker_details/<int:user_id>', methods=['GET'])
+@admin_required
+def get_broker_details(user_id):
+    # Look up if a broker connection exists for this user
+    broker = Broker.query.filter_by(user_id=user_id).first()
+
+    if broker:
+        return jsonify({
+            'broker_found': True,
+            'broker_name': broker.broker_name,
+            'broker_user_id': broker.broker_user_id,
+            'api_key': broker.api_key,
+            'api_secret': broker.api_secret,
+            'totp_secret': broker.totp_secret,
+            'access_token': broker.access_token,
+            'is_master': broker.is_master,
+            'copy': broker.copy,
+            'multiplier': broker.multiplier,
+            'subscription_expiry': broker.subscription_expiry.strftime(
+                '%Y-%m-%d %H:%M:%S') if broker.subscription_expiry else None,
+            'subscription_status': broker.subscription_status
+        })
+    else:
+        # No broker found for this user
+        return jsonify({
+            'broker_found': False
+        })
+
+
+# Plans management routes
+
+@app.route('/admin/plans')
+@admin_required
+def admin_plans():
+    """Display all subscription plans."""
+    plans = Plan.query.order_by(Plan.created_at.desc()).all()
+    return render_template('admin/plans.html', plans=plans)
+
+
+@app.route('/admin/plans/create', methods=['GET', 'POST'])
+@admin_required
+def admin_create_plan():
+    """Create a new subscription plan."""
+    if request.method == 'POST':
+        try:
+            name = request.form['name']
+            duration = int(request.form['duration'])
+            price = float(request.form['price'])
+            description = request.form.get('description', '')
+            features = request.form.get('features', '')
+            status = request.form['status']
+
+            # Create new plan
+            new_plan = Plan(
+                name=name,
+                duration=duration,
+                price=price,
+                description=description,
+                features=features,
+                status=status,
+                created_at=datetime.datetime.now()
+            )
+
+            db.session.add(new_plan)
+            db.session.commit()
+
+            flash('Plan created successfully', 'success')
+            return redirect(url_for('admin_plans'))
+
+        except Exception as e:
+            db.session.rollback()
+            return render_template('admin/create_plan.html', error=str(e))
+
+    return render_template('admin/create_plan.html')
+
+
+@app.route('/admin/plans/view/<int:plan_id>')
+@admin_required
+def admin_view_plan(plan_id):
+    """View a specific subscription plan."""
+    plan = Plan.query.get_or_404(plan_id)
+    subscriptions = Subscription.query.filter_by(plan_id=plan_id).all()
+
+    return render_template('admin/view_plan.html', plan=plan, subscriptions=subscriptions)
+
+
+@app.route('/admin/plans/edit/<int:plan_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_plan(plan_id):
+    """Edit an existing subscription plan."""
+    plan = Plan.query.get_or_404(plan_id)
+
+    if request.method == 'POST':
+        try:
+            plan.name = request.form['name']
+            plan.duration = int(request.form['duration'])
+            plan.price = float(request.form['price'])
+            plan.description = request.form.get('description', '')
+            plan.features = request.form.get('features', '')
+            plan.status = request.form['status']
+
+            db.session.commit()
+
+            flash('Plan updated successfully', 'success')
+            return redirect(url_for('admin_view_plan', plan_id=plan.id))
+
+        except Exception as e:
+            db.session.rollback()
+            return render_template('admin/edit_plan.html', plan=plan, error=str(e))
+
+    return render_template('admin/edit_plan.html', plan=plan)
+
+
+@app.route('/admin/plans/toggle/<int:plan_id>')
+@admin_required
+def admin_toggle_plan(plan_id):
+    """Toggle the active status of a plan."""
+    plan = Plan.query.get_or_404(plan_id)
+
+    # Toggle the status
+    if plan.status == 'Active':
+        plan.status = 'Inactive'
+        message = 'Plan deactivated successfully'
+    else:
+        plan.status = 'Active'
+        message = 'Plan activated successfully'
+
+    try:
+        db.session.commit()
+        flash(message, 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating plan status: {str(e)}", 'error')
+
+    return redirect(url_for('admin_view_plan', plan_id=plan.id))
+
+
+@app.route('/admin/subscriptions/edit/<int:subscription_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_subscription(subscription_id):
+    """Edit a user subscription."""
+    subscription = Subscription.query.get_or_404(subscription_id)
+
+    # Get all available plans for the dropdown
+    plans = Plan.query.all()
+
+    if request.method == 'POST':
+        try:
+            # Get the selected plan
+            plan_id = request.form.get('plan_id')
+            if plan_id:
+                plan = Plan.query.get_or_404(int(plan_id))
+                subscription.plan_id = plan.id
+
+                # Handle expiry date calculation
+                auto_calculate = 'auto_calculate_expiry' in request.form
+                if auto_calculate:
+                    # Calculate new expiry date based on plan duration
+                    subscription.expiry_date = datetime.datetime.now() + datetime.timedelta(days=plan.duration)
+                else:
+                    # Use manually entered date
+                    expiry_date_str = request.form.get('expiry_date')
+                    if expiry_date_str:
+                        subscription.expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%d')
+
+            # Update status
+            subscription.status = request.form.get('status')
+
+            # Save changes
+            db.session.commit()
+
+            flash('Subscription updated successfully', 'success')
+            return redirect(url_for('admin_subscriptions'))
+
+        except Exception as e:
+            db.session.rollback()
+            return render_template(
+                'admin/edit_subscription.html',
+                subscription=subscription,
+                plans=plans,
+                error=str(e)
+            )
+
+    return render_template(
+        'admin/edit_subscription.html',
+        subscription=subscription,
+        plans=plans
+    )
+
+
+@app.route('/admin/users/<int:user_id>/assign-plan', methods=['GET', 'POST'])
+@admin_required
+def admin_assign_plan(user_id):
+    """Assign a subscription plan to a user."""
+    user = User.query.get_or_404(user_id)
+    plans = Plan.query.filter_by(status='Active').all()
+
+    # Check for existing subscription
+    existing_subscription = Subscription.query.filter_by(user_id=user.id, status='Active').first()
+
+    if request.method == 'POST':
+        try:
+            plan_id = request.form.get('plan_id')
+
+            if not plan_id:
+                return render_template(
+                    'admin/assign_plan.html',
+                    user=user,
+                    plans=plans,
+                    existing_subscription=existing_subscription,
+                    error="Plan selection is required"
+                )
+
+            plan = Plan.query.get(plan_id)
+
+            if not plan:
+                return render_template(
+                    'admin/assign_plan.html',
+                    user=user,
+                    plans=plans,
+                    existing_subscription=existing_subscription,
+                    error="Invalid plan selected"
+                )
+
+            # Handle existing subscription
+            if existing_subscription:
+                # If "replace_subscription" is checked, update the existing one
+                if request.form.get('replace_subscription') == 'on':
+                    # Save history of previous plan before changing
+                    history = SubscriptionHistory(
+                        user_id=user.id,
+                        plan_id=existing_subscription.plan_id,
+                        start_date=existing_subscription.start_date,
+                        end_date=datetime.datetime.now(),
+                        status=existing_subscription.status
+                    )
+                    db.session.add(history)
+
+                    # Update the subscription
+                    existing_subscription.plan_id = plan.id
+                    existing_subscription.start_date = datetime.datetime.now()
+
+                    # Handle expiry date
+                    auto_calculate = request.form.get('auto_calculate_expiry') == 'on'
+                    if auto_calculate:
+                        existing_subscription.expiry_date = datetime.datetime.now() + datetime.timedelta(
+                            days=plan.duration)
+                    else:
+                        expiry_date_str = request.form.get('expiry_date')
+                        existing_subscription.expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%d')
+
+                    db.session.commit()
+
+                    flash(f'Updated subscription plan for {user.username} to {plan.name}', 'success')
+                else:
+                    # If not replacing, show error that user already has a plan
+                    return render_template(
+                        'admin/assign_plan.html',
+                        user=user,
+                        plans=plans,
+                        existing_subscription=existing_subscription,
+                        error=f"User already has an active subscription. Check 'Replace existing subscription' to override."
+                    )
+            else:
+                # Create new subscription
+                auto_calculate = request.form.get('auto_calculate_expiry') == 'on'
+
+                if auto_calculate:
+                    expiry_date = datetime.datetime.now() + datetime.timedelta(days=plan.duration)
+                else:
+                    expiry_date_str = request.form.get('expiry_date')
+                    expiry_date = datetime.datetime.strptime(expiry_date_str, '%Y-%m-%d')
+
+                subscription = Subscription(
+                    user_id=user.id,
+                    plan_id=plan.id,
+                    trading_account=user.username,  # Or another field
+                    broker="FINVASIA",  # Default or from form
+                    status="Active",
+                    start_date=datetime.datetime.now(),
+                    expiry_date=expiry_date
+                )
+
+                db.session.add(subscription)
+                db.session.commit()
+
+                flash(f'Assigned {plan.name} plan to {user.username}', 'success')
+
+            return redirect(url_for('admin_users'))
+
+        except Exception as e:
+            db.session.rollback()
+            return render_template(
+                'admin/assign_plan.html',
+                user=user,
+                plans=plans,
+                existing_subscription=existing_subscription,
+                error=f"Error assigning plan: {str(e)}"
+            )
+
+    return render_template(
+        'admin/assign_plan.html',
+        user=user,
+        plans=plans,
+        existing_subscription=existing_subscription
+    )
+
+
 # Create admin command
 @app.cli.command("create-admin")
 def create_admin():
@@ -1251,6 +1627,9 @@ def check_subscriptions():
 # Run the app
 if __name__ == '__main__':
     try:
+        if not hasattr(Subscription, 'plan_id'):
+            Subscription.plan_id = db.Column(db.Integer)
+
         with app.app_context():
             # Get existing tables from the database
             inspector = db.inspect(db.engine)
@@ -1258,6 +1637,13 @@ if __name__ == '__main__':
 
             # Create specific missing tables without dropping existing ones
             print("Checking for missing tables...")
+
+            # Create plans table if it doesn't exist
+            if 'plans' not in existing_tables:  # Check for 'plans' not 'subscription_plan'
+                print("Creating plans table...")
+                # Use db.create_all() with specific tables for more control
+                Plan.__table__.create(db.engine)
+                print("Plans table created.")
 
             # Create new models as required
             if 'subscription_plan' not in existing_tables:
@@ -1269,6 +1655,14 @@ if __name__ == '__main__':
                 print("Creating subscription table...")
                 db.metadata.tables['subscription'].create(db.engine)
                 print("subscription table created.")
+            else:
+                # Check if plan_id column exists in subscription table
+                subscription_columns = [col['name'] for col in inspector.get_columns('subscription')]
+                if 'plan_id' not in subscription_columns:
+                    print("Adding plan_id column to subscription table...")
+                    db.session.execute(db.text('ALTER TABLE subscription ADD COLUMN plan_id INTEGER'))
+                    db.session.commit()
+                    print("plan_id column added to subscription table.")
 
             # Check if customer_id column exists in User table
             print("Checking for customer_id column in User table...")

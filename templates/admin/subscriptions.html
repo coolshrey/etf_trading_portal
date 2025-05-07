@@ -31,50 +31,49 @@
 </div>
 
 <div class="subscriptions-table">
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>User</th>
-                <th>Trading Account</th>
-                <th>Broker</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for broker in subscriptions %}
-            <tr>
-                <td>{{ broker.id }}</td>
-                <td>{{ broker.user.username }}</td>
-                <td>{{ broker.user_id_broker }}</td>
-                <td>{{ broker.broker_name }}</td>
-                <td>{% if broker.subscription_expiry %}{{ broker.subscription_expiry|datetime('%Y-%m-%d') }}{% else %}Not Set{% endif %}</td>
-                <td>
-                    {% if broker.subscription_status == 'Active' %}
-                        <span class="badge active">Active</span>
-                    {% else %}
-                        <span class="badge inactive">Inactive</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="/admin/subscriptions/edit/{{ broker.id }}" class="btn small">Edit</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <table class="subscriptions-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>User</th>
+            <th>Trading Account</th>
+            <th>Broker</th>
+            <th>Plan Name</th>  <!-- New column -->
+            <th>Expiry Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for subscription in subscriptions %}
+        <tr>
+            <td>{{ subscription.id }}</td>
+            <td>{{ subscription.user }}</td>
+            <td>{{ subscription.trading_account }}</td>
+            <td>{{ subscription.broker }}</td>
+            <td>{{ subscription.plan.name if subscription.plan else "No Plan" }}</td>  <!-- Display plan name -->
+            <td>{{ subscription.expiry_date.strftime('%Y-%m-%d') }}</td>
+            <td class="status-cell">
+                <span class="status-badge {{ subscription.status.lower() }}">{{ subscription.status }}</span>
+            </td>
+            <td>
+                <a href="{{ url_for('admin_edit_subscription', subscription_id=subscription.id) }}" class="btn small">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
-    <div class="pagination">
-        {% if page > 1 %}
-        <a href="?page={{ page - 1 }}&search={{ search }}&status={{ status }}" class="btn small">&lt; Previous</a>
-        {% endif %}
-        <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
-        {% if page < total_pages %}
-        <a href="?page={{ page + 1 }}&search={{ search }}&status={{ status }}" class="btn small">Next &gt;</a>
-        {% endif %}
-    </div>
+
+<!--    <div class="pagination">-->
+<!--        {% if page > 1 %}-->
+<!--        <a href="?page={{ page - 1 }}&search={{ search }}&status={{ status }}" class="btn small">&lt; Previous</a>-->
+<!--        {% endif %}-->
+<!--        <span class="page-info">Page {{ page }} of {{ total_pages }}</span>-->
+<!--        {% if page < total_pages %}-->
+<!--        <a href="?page={{ page + 1 }}&search={{ search }}&status={{ status }}" class="btn small">Next &gt;</a>-->
+<!--        {% endif %}-->
+<!--    </div>-->
 </div>
 
 <style>

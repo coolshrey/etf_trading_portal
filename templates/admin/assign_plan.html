@@ -1,0 +1,227 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Assign Plan to {{ user.username }}</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_users') }}" class="btn">Back to Users</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="user-info-box">
+    <div class="detail-row">
+        <div class="detail-label">Username</div>
+        <div class="detail-value">{{ user.username }}</div>
+    </div>
+    <div class="detail-row">
+        <div class="detail-label">Email</div>
+        <div class="detail-value">{{ user.email }}</div>
+    </div>
+    
+    {% if existing_subscription %}
+    <div class="detail-row highlight">
+        <div class="detail-label">Current Plan</div>
+        <div class="detail-value">
+            {{ existing_subscription.plan_name }}
+            (Expires: {{ existing_subscription.expiry_date.strftime('%Y-%m-%d') }})
+        </div>
+    </div>
+    <div class="detail-row">
+        <div class="detail-label">Amount</div>
+        <div class="detail-value">₹{{ "%.2f"|format(existing_subscription.amount) }}</div>
+    </div>
+    <div class="detail-row">
+        <div class="detail-label">Payment Status</div>
+        <div class="detail-value">{{ existing_subscription.payment_status }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="assign-plan-form">
+    <form action="{{ url_for('admin_assign_plan', user_id=user.id) }}" method="post">
+        {% if existing_subscription %}
+        <div class="form-check warning-box">
+            <input type="checkbox" id="replace_subscription" name="replace_subscription">
+            <label for="replace_subscription">Replace existing subscription</label>
+            <div class="form-help">
+                This will end the current subscription and assign a new one.
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="plan_id">Subscription Plan</label>
+            <select id="plan_id" name="plan_id" required>
+                <option value="">Select a plan</option>
+                {% for plan in plans %}
+                <option value="{{ plan.id }}">
+                    {{ plan.name }} ({{ plan.duration }} days - ₹{{ "%.2f"|format(plan.price) }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group expiry-controls">
+            <div class="form-check">
+                <input type="checkbox" id="auto_calculate_expiry" name="auto_calculate_expiry" checked>
+                <label for="auto_calculate_expiry">Automatically calculate expiry date based on plan</label>
+            </div>
+
+            <div id="manual_expiry_container" style="margin-top: 10px; display: none;">
+                <label for="expiry_date">Expiry Date</label>
+                <input type="date" id="expiry_date" name="expiry_date"
+                       value="{{ datetime.now().strftime('%Y-%m-%d') }}">
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button type="submit" class="btn">Assign Plan</button>
+            <a href="{{ url_for('admin_users') }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const autoCalculateCheckbox = document.getElementById('auto_calculate_expiry');
+        const manualExpiryContainer = document.getElementById('manual_expiry_container');
+
+        function toggleExpiryInput() {
+            if (autoCalculateCheckbox.checked) {
+                manualExpiryContainer.style.display = 'none';
+            } else {
+                manualExpiryContainer.style.display = 'block';
+            }
+        }
+
+        // Set initial state
+        toggleExpiryInput();
+
+        // Add event listener
+        autoCalculateCheckbox.addEventListener('change', toggleExpiryInput);
+
+        {% if existing_subscription %}
+        const replaceCheck = document.getElementById('replace_subscription');
+        const formElements = document.querySelectorAll('.assign-plan-form select, .assign-plan-form input:not(#replace_subscription), .assign-plan-form button[type="submit"]');
+
+        function toggleFormEnabled() {
+            for (let el of formElements) {
+                el.disabled = !replaceCheck.checked;
+            }
+        }
+
+        // Set initial state
+        toggleFormEnabled();
+
+        // Add event listener
+        replaceCheck.addEventListener('change', toggleFormEnabled);
+        {% endif %}
+    });
+</script>
+
+<style>
+    .user-info-box {
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .detail-row {
+        display: flex;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+    }
+
+    .detail-label {
+        width: 150px;
+        font-weight: bold;
+        color: #555;
+    }
+
+    .detail-value {
+        flex: 1;
+    }
+
+    .highlight {
+        background-color: #e8f4f8;
+        padding: 5px;
+        border-radius: 3px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+
+    select, input[type="date"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+
+    .form-check {
+        margin-bottom: 10px;
+    }
+
+    .warning-box {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        padding: 10px;
+        border-radius: 3px;
+        margin-bottom: 15px;
+    }
+
+    .action-buttons {
+        margin-top: 20px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border-radius: 3px;
+        display: inline-block;
+        text-decoration: none;
+        cursor: pointer;
+        margin-right: 10px;
+        border: none;
+        background-color: #3498db;
+        color: white;
+    }
+
+    .btn.secondary {
+        background-color: #95a5a6;
+    }
+
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 3px;
+    }
+
+    .alert-error {
+        background-color: #fadbd8;
+        color: #c0392b;
+        border: 1px solid #e74c3c;
+    }
+
+    .alert-success {
+        background-color: #d5f5e3;
+        color: #27ae60;
+        border: 1px solid #2ecc71;
+    }
+</style>
+{% endblock %}

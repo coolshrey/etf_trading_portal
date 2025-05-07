@@ -1,90 +1,184 @@
 {% extends "admin/layout.html" %}
 
 {% block admin_content %}
-<h2>Edit Subscription</h2>
+<h2>Edit User Subscription</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_subscriptions') }}" class="btn">Back to Subscriptions</a>
+</div>
 
 {% if error %}
 <div class="alert alert-error">{{ error }}</div>
 {% endif %}
 
-<div class="user-info">
-    <h3>User: {{ broker.user.username }}</h3>
-    <p>Customer ID: {{ broker.user.customer_id }}</p>
-    <p>Trading Account: {{ broker.user_id_broker }} ({{ broker.broker_name }})</p>
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="edit-subscription-form">
+    <form action="{{ url_for('admin_edit_subscription', subscription_id=subscription.id) }}" method="post">
+        <div class="form-group">
+            <label>User</label>
+            <div class="form-control-static">{{ subscription.user }}</div>
+        </div>
+
+        <div class="form-group">
+            <label>Trading Account</label>
+            <div class="form-control-static">{{ subscription.trading_account }}</div>
+        </div>
+
+        <div class="form-group">
+            <label>Broker</label>
+            <div class="form-control-static">{{ subscription.broker }}</div>
+        </div>
+
+        <div class="form-group">
+            <label for="plan_id">Subscription Plan</label>
+            <select id="plan_id" name="plan_id" required>
+                <option value="">Select a plan</option>
+                {% for plan in plans %}
+                <option value="{{ plan.id }}" {% if subscription.plan_id == plan.id %}selected{% endif %}>
+                    {{ plan.name }} ({{ plan.duration }} days - ₹{{ "%.2f"|format(plan.price) }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group expiry-controls">
+            <div class="form-check">
+                <input type="checkbox" id="auto_calculate_expiry" name="auto_calculate_expiry" checked>
+                <label for="auto_calculate_expiry">Automatically calculate expiry date based on plan</label>
+            </div>
+
+            <div id="manual_expiry_container" style="margin-top: 10px; display: none;">
+                <label for="expiry_date">Expiry Date</label>
+                <input type="date" id="expiry_date" name="expiry_date"
+                       value="{{ subscription.expiry_date.strftime('%Y-%m-%d') }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="Active" {% if subscription.status == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Inactive" {% if subscription.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                <option value="Expired" {% if subscription.status == 'Expired' %}selected{% endif %}>Expired</option>
+            </select>
+        </div>
+
+        <div class="action-buttons">
+            <button type="submit" class="btn">Save Changes</button>
+            <a href="{{ url_for('admin_subscriptions') }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
 </div>
 
-<form method="post" class="form">
-    <div class="form-group">
-        <label for="expiry_date">Expiry Date</label>
-        <input type="date" id="expiry_date" name="expiry_date" value="{% if broker.subscription_expiry %}{{ broker.subscription_expiry.strftime('%Y-%m-%d') }}{% endif %}" required>
-    </div>
-    
-    <div class="form-group">
-        <label for="status">Status</label>
-        <select id="status" name="status">
-            <option value="Active" {% if broker.subscription_status == 'Active' %}selected{% endif %}>Active</option>
-            <option value="Inactive" {% if broker.subscription_status == 'Inactive' %}selected{% endif %}>Inactive</option>
-        </select>
-    </div>
-    
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-        <a href="{{ url_for('admin_subscriptions') }}" class="btn">Cancel</a>
-    </div>
-</form>
-
 <style>
-    .user-info {
-        background-color: #f5f5f5;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        border-radius: 4px;
+    .edit-subscription-form {
+        max-width: 600px;
     }
+
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
+
     label {
         display: block;
         margin-bottom: 0.5rem;
-        font-weight: bold;
+        font-weight: 500;
     }
+
+    .form-control-static {
+        padding: 0.5rem;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+
+    input[type="text"],
     input[type="date"],
     select {
         width: 100%;
         padding: 0.5rem;
         border: 1px solid #ddd;
-        border-radius: 4px;
+        border-radius: 3px;
     }
-    .form-actions {
-        margin-top: 1.5rem;
+
+    .form-check {
+        display: flex;
+        align-items: center;
     }
-    .btn-primary {
-        background-color: #3498db;
-        color: white;
+
+    .form-check input {
+        margin-right: 0.5rem;
     }
+
+    .form-check label {
+        display: inline;
+        font-weight: normal;
+    }
+
+    .action-buttons {
+        margin-top: 2rem;
+    }
+
     .btn {
-        display: inline-block;
         padding: 0.5rem 1rem;
-        background-color: #f5f5f5;
-        color: #333;
-        border: none;
-        border-radius: 4px;
+        border-radius: 3px;
+        display: inline-block;
         text-decoration: none;
         cursor: pointer;
         margin-right: 0.5rem;
-    }
-    .btn-primary {
+        border: none;
         background-color: #3498db;
         color: white;
     }
+
+    .btn.secondary {
+        background-color: #95a5a6;
+    }
+
     .alert {
         padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        border-radius: 3px;
     }
+
     .alert-error {
-        background-color: #f8d7da;
-        color: #721c24;
+        background-color: #fadbd8;
+        color: #c0392b;
+        border: 1px solid #e74c3c;
+    }
+
+    .alert-success {
+        background-color: #d5f5e3;
+        color: #27ae60;
+        border: 1px solid #2ecc71;
+    }
+
+    .action-bar {
+        margin-bottom: 1.5rem;
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const autoCalculateCheckbox = document.getElementById('auto_calculate_expiry');
+        const manualExpiryContainer = document.getElementById('manual_expiry_container');
+
+        function toggleExpiryInput() {
+            if (autoCalculateCheckbox.checked) {
+                manualExpiryContainer.style.display = 'none';
+            } else {
+                manualExpiryContainer.style.display = 'block';
+            }
+        }
+
+        // Set initial state
+        toggleExpiryInput();
+
+        // Add event listener
+        autoCalculateCheckbox.addEventListener('change', toggleExpiryInput);
+    });
+</script>
 {% endblock %}

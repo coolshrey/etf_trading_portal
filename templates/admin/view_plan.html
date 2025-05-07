@@ -1,0 +1,220 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Subscription Plan Details</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_plans') }}" class="btn">Back to Plans</a>
+    <a href="{{ url_for('admin_edit_plan', plan_id=plan.id) }}" class="btn">Edit Plan</a>
+    <a href="{{ url_for('admin_toggle_plan', plan_id=plan.id) }}" class="btn {{ 'btn-danger' if plan.status == 'Active' else 'btn-success' }}">
+        {{ 'Deactivate' if plan.status == 'Active' else 'Activate' }}
+    </a>
+</div>
+
+<div class="plan-details">
+    <div class="detail-row">
+        <div class="detail-label">ID</div>
+        <div class="detail-value">{{ plan.id }}</div>
+    </div>
+    
+    <div class="detail-row">
+        <div class="detail-label">Name</div>
+        <div class="detail-value">{{ plan.name }}</div>
+    </div>
+    
+    <div class="detail-row">
+        <div class="detail-label">Duration</div>
+        <div class="detail-value">{{ plan.duration }} days</div>
+    </div>
+    
+    <div class="detail-row">
+        <div class="detail-label">Price</div>
+        <div class="detail-value">₹{{ "%.2f"|format(plan.price) }}</div>
+    </div>
+    
+    <div class="detail-row">
+        <div class="detail-label">Status</div>
+        <div class="detail-value">
+            <span class="status-badge {{ 'active' if plan.status == 'Active' else 'inactive' }}">
+                {{ plan.status }}
+            </span>
+        </div>
+    </div>
+    
+    <div class="detail-row">
+        <div class="detail-label">Created At</div>
+        <div class="detail-value">{{ plan.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+    </div>
+    
+    {% if plan.description %}
+    <div class="detail-row">
+        <div class="detail-label">Description</div>
+        <div class="detail-value">{{ plan.description }}</div>
+    </div>
+    {% endif %}
+    
+    {% if plan.features %}
+    <div class="detail-row">
+        <div class="detail-label">Features</div>
+        <div class="detail-value features-list">
+            {% for feature in plan.features.split('\n') %}
+                <div class="feature-item">{{ feature }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<h3>Subscriptions Using This Plan</h3>
+
+<div class="subscriptions-table">
+    {% if subscriptions %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Status</th>
+                <th>Start Date</th>
+                <th>Expiry Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td>{{ sub.id }}</td>
+                <td>{{ sub.user.username }}</td>
+                <td>{{ sub.status }}</td>
+                <td>{{ sub.start_date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ sub.expiry_date.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    <a href="{{ url_for('admin_view_subscription', subscription_id=sub.id) }}" class="btn small">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">No subscriptions are currently using this plan.</div>
+    {% endif %}
+</div>
+
+<style>
+    .plan-details {
+        max-width: 800px;
+        margin-bottom: 2rem;
+        background: #f9f9f9;
+        border-radius: 5px;
+        padding: 1rem;
+    }
+    
+    .detail-row {
+        display: flex;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.5rem;
+    }
+    
+    .detail-label {
+        font-weight: bold;
+        width: 150px;
+        color: #555;
+    }
+    
+    .detail-value {
+        flex: 1;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    
+    .status-badge.active {
+        background-color: #d5f5e3;
+        color: #27ae60;
+    }
+    
+    .status-badge.inactive {
+        background-color: #fadbd8;
+        color: #c0392b;
+    }
+    
+    .features-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .feature-item {
+        padding-left: 20px;
+        position: relative;
+    }
+    
+    .feature-item:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #27ae60;
+        font-weight: bold;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    
+    table th, table td {
+        padding: 0.7rem;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    
+    table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 3px;
+        display: inline-block;
+        text-decoration: none;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        border: none;
+        background-color: #3498db;
+        color: white;
+    }
+    
+    .btn.small {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .btn-danger {
+        background-color: #e74c3c;
+    }
+    
+    .btn-success {
+        background-color: #2ecc71;
+    }
+    
+    .no-data {
+        padding: 1rem;
+        background: #f9f9f9;
+        border: 1px dashed #ddd;
+        text-align: center;
+        color: #7f8c8d;
+    }
+    
+    .action-bar {
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}

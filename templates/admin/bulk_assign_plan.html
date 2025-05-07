@@ -1,0 +1,219 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Bulk Assign Subscription Plan</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_users') }}" class="btn">Back to Users</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="bulk-assign-form">
+    <form action="{{ url_for('admin_bulk_assign_plan') }}" method="post">
+        <div class="form-section">
+            <h3>1. Select Users</h3>
+            
+            <div class="select-actions">
+                <button type="button" id="select-all" class="btn small">Select All</button>
+                <button type="button" id="deselect-all" class="btn small">Deselect All</button>
+                <input type="text" id="filter-users" placeholder="Filter users..." class="filter-input">
+            </div>
+            
+            <div class="users-selection">
+                <table class="select-users-table">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Current Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr class="user-row">
+                            <td>
+                                <input type="checkbox" name="selected_users" value="{{ user.id }}" id="user-{{ user.id }}">
+                            </td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% for subscription in user.subscriptions if subscription.status == 'Active' %}
+                                    {% if loop.first %}
+                                        {{ subscription.plan.name if subscription.plan else "No Plan" }}
+                                    {% endif %}
+                                {% else %}
+                                    <span class="no-plan">No Plan</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>2. Select Plan</h3>
+            
+            <div class="form-group">
+                <label for="plan_id">Subscription Plan</label>
+                <select id="plan_id" name="plan_id" required>
+                    <option value="">Select a plan</option>
+                    {% for plan in plans %}
+                    <option value="{{ plan.id }}">
+                        {{ plan.name }} ({{ plan.duration }} days - ₹{{ "%.2f"|format(plan.price) }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>3. Configure Options</h3>
+            
+            <div class="form-check">
+                <input type="checkbox" id="replace_existing" name="replace_existing" checked>
+                <label for="replace_existing">Replace existing subscriptions</label>
+                <div class="form-help">
+                    If checked, users with active subscriptions will have them replaced.
+                    If unchecked, users with active subscriptions will be skipped.
+                </div>
+            </div>
+            
+            <div class="form-group expiry-controls">
+                <div class="form-check">
+                    <input type="checkbox" id="auto_calculate_expiry" name="auto_calculate_expiry" checked>
+                    <label for="auto_calculate_expiry">Automatically calculate expiry date based on plan</label>
+                </div>
+                
+                <div id="manual_expiry_container" style="margin-top: 10px; display: none;">
+                    <label for="expiry_date">Expiry Date</label>
+                    <input type="date" id="expiry_date" name="expiry_date" 
+                           value="{{ datetime.now().strftime('%Y-%m-%d') }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button type="submit" class="btn">Assign Plans</button>
+            <a href="{{ url_for('admin_users') }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Expiry date toggle
+        const autoCalculateCheckbox = document.getElementById('auto_calculate_expiry');
+        const manualExpiryContainer = document.getElementById('manual_expiry_container');
+        
+        function toggleExpiryInput() {
+            if (autoCalculateCheckbox.checked) {
+                manualExpiryContainer.style.display = 'none';
+            } else {
+                manualExpiryContainer.style.display = 'block';
+            }
+        }
+        
+        toggleExpiryInput();
+        autoCalculateCheckbox.addEventListener('change', toggleExpiryInput);
+        
+        // Select/Deselect all
+        const selectAllBtn = document.getElementById('select-all');
+        const deselectAllBtn = document.getElementById('deselect-all');
+        const userCheckboxes = document.querySelectorAll('input[name="selected_users"]');
+        
+        selectAllBtn.addEventListener('click', function() {
+            userCheckboxes.forEach(checkbox => {
+                if (!checkbox.closest('tr').classList.contains('hidden')) {
+                    checkbox.checked = true;
+                }
+            });
+        });
+        
+        deselectAllBtn.addEventListener('click', function() {
+            userCheckboxes.forEach(checkbox => checkbox.checked = false);
+        });
+        
+        // Filter users
+        const filterInput = document.getElementById('filter-users');
+        const userRows = document.querySelectorAll('.user-row');
+        
+        filterInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            userRows.forEach(row => {
+                const username = row.children[1].textContent.toLowerCase();
+                const email = row.children[2].textContent.toLowerCase();
+                
+                if (username.includes(searchTerm) || email.includes(searchTerm)) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        });
+    });
+</script>
+
+<style>
+    .bulk-assign-form {
+        max-width: 800px;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+    }
+    
+    .users-selection {
+        height: 300px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        margin-top: 0.5rem;
+    }
+    
+    .select-users-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .select-users-table th,
+    .select-users-table td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+    }
+    
+    .user-row.hidden {
+        display: none;
+    }
+    
+    .select-actions {
+        display: flex;
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-input {
+        flex-grow: 1;
+        margin-left: 0.5rem;
+        padding: 0.3rem;
+    }
+    
+    .no-plan {
+        color: #e74c3c;
+    }
+    
+    /* Other styles as needed */
+</style>
+{% endblock %}

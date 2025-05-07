@@ -7,11 +7,21 @@
     <div class="admin-sidebar">
         <h3>Admin Panel</h3>
         <ul class="admin-nav">
-            <li><a href="/admin/users" class="admin-nav-link {% if active_page == 'users' %}active{% endif %}">Manage Users</a></li>
-            <li><a href="/admin/trading_accounts" class="admin-nav-link {% if active_page == 'trading_accounts' %}active{% endif %}">Manage User Trading Accounts</a></li>
-            <li><a href="/admin/subscriptions" class="admin-nav-link {% if active_page == 'subscriptions' %}active{% endif %}">Manage Subscriptions</a></li>
-            <li><a href="/admin/plans" class="admin-nav-link {% if active_page == 'plans' %}active{% endif %}">Manage Plans</a></li>
-            <li><a href="/admin/exports" class="admin-nav-link {% if active_page == 'exports' %}active{% endif %}">Exports & Backup</a></li>
+            <li class="{{ 'active' if request.endpoint == 'admin_users' else '' }}">
+                <a href="{{ url_for('admin_users') }}">Manage Users</a>
+            </li>
+            <li class="{{ 'active' if request.endpoint == 'admin_trading_accounts' else '' }}">
+                <a href="{{ url_for('admin_trading_accounts') }}">Manage User Trading Accounts</a>
+            </li>
+            <li class="{{ 'active' if request.endpoint == 'admin_subscriptions' else '' }}">
+                <a href="{{ url_for('admin_subscriptions') }}">Manage Subscriptions</a>
+            </li>
+            <li class="{{ 'active' if request.endpoint == 'admin_plans' else '' }}">
+                <a href="{{ url_for('admin_plans') }}">Manage Plans</a>
+            </li>
+            <li class="{{ 'active' if request.endpoint == 'admin_exports' else '' }}">
+                <a href="{{ url_for('admin_exports') }}">Exports & Backup</a>
+            </li>
         </ul>
     </div>
     <div class="admin-content">
@@ -70,6 +80,39 @@
         .admin-content {
             margin-left: 0;
         }
+    }
+</style>
+<style>
+    .admin-nav li.active {
+        background-color: #3498db;  /* Match your blue highlight color */
+    }
+
+    .admin-nav li.active a {
+        color: white;
+    }
+
+    /* Your existing styles */
+    .admin-nav li {
+        margin-bottom: 0;
+        transition: background-color 0.2s;
+    }
+
+    .admin-nav a {
+        display: block;
+        padding: 10px 15px;
+        color: #333;
+        text-decoration: none;
+    }
+
+    .admin-nav li:hover {
+        background-color: #a5b5b5;
+    }
+
+    /* If you need to handle longer text, use this instead of nowrap */
+    .admin-nav a.multi-line,
+    .menu-item.multi-line {
+        white-space: normal;      /* Allow text to wrap */
+        line-height: 1.3;         /* Improve readability of wrapped text */
     }
 </style>
 {% endblock %}

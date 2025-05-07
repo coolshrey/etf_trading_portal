@@ -208,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function() {
             username: "{{ user.username }}",
             email: "{{ user.email }}",
             customer_id: "{{ user.customer_id }}"
-            // Add other user fields you might need
         },
         {% endfor %}
     };
@@ -219,22 +218,54 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = userData[selectedUserId];
 
         if (user) {
-            // You can update any fields that should change based on user selection
-            // For example, if you want to suggest a broker user ID based on username:
+            // First update the broker_user_id field as you're currently doing
             const brokerUserIdField = document.getElementById('broker_user_id');
             if (brokerUserIdField) {
-                // Only update if the field is empty or if you want to always suggest
                 if (!brokerUserIdField.value || confirm("Update Broker User ID to match the selected user?")) {
                     brokerUserIdField.value = user.username.toUpperCase();
                 }
             }
 
-            // You can update other fields as needed
-            // For example:
-            // document.getElementById('some_other_field').value = user.some_property;
+            // Now fetch all broker details for this user via AJAX
+            fetch(`/admin/get_broker_details/${selectedUserId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update all form fields with the received data
+                    if (data.broker_found) {
+                        document.getElementById('broker_name').value = data.broker_name || '';
+                        document.getElementById('broker_user_id').value = data.broker_user_id || '';
+                        document.getElementById('api_key').value = data.api_key || '';
+                        document.getElementById('api_secret').value = data.api_secret || '';
+                        document.getElementById('totp_secret').value = data.totp_secret || '';
+                        document.getElementById('access_token').value = data.access_token || '';
+                        document.getElementById('is_master').checked = data.is_master || false;
+                        document.getElementById('copy').checked = data.copy || false;
+                        document.getElementById('multiplier').value = data.multiplier || 1;
+
+                        // For datetime-local input, needs special formatting
+                        if (data.subscription_expiry) {
+                            document.getElementById('subscription_expiry').value =
+                                data.subscription_expiry.replace(' ', 'T').slice(0, 16);
+                        }
+
+                        // For select inputs
+                        if (data.subscription_status) {
+                            document.getElementById('subscription_status').value = data.subscription_status;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching broker details:', error);
+                });
         }
     });
 });
+
 </script>
 
 {% endblock %}

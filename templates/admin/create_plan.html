@@ -1,0 +1,138 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_content %}
+<h2>Create New Subscription Plan</h2>
+
+<div class="action-bar">
+    <a href="{{ url_for('admin_plans') }}" class="btn">Back to Plans</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="create-plan-form">
+    <form action="{{ url_for('admin_create_plan') }}" method="post">
+        <div class="form-group">
+            <label for="name">Plan Name</label>
+            <input type="text" id="name" name="name" required>
+            <div class="form-help">A descriptive name for the subscription plan (e.g., Basic Monthly, Premium Annual)</div>
+        </div>
+
+        <div class="form-group">
+            <label for="duration">Duration (days)</label>
+            <input type="number" id="duration" name="duration" min="1" value="30" required>
+            <div class="form-help">How long the subscription lasts in days (30 for monthly, 90 for quarterly, 365 for annual)</div>
+        </div>
+
+        <div class="form-group">
+            <label for="price">Price (₹)</label>
+            <input type="number" id="price" name="price" min="0" step="0.01" required>
+            <div class="form-help">The price of the subscription plan</div>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description (optional)</label>
+            <textarea id="description" name="description" rows="3"></textarea>
+            <div class="form-help">Additional details about what's included in this plan</div>
+        </div>
+
+        <div class="form-group">
+            <label for="features">Features (optional)</label>
+            <textarea id="features" name="features" rows="3"></textarea>
+            <div class="form-help">List of features, one per line</div>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="Active" selected>Active</option>
+                <option value="Inactive">Inactive</option>
+            </select>
+        </div>
+
+        <div class="action-buttons">
+            <button type="submit" class="btn">Create Plan</button>
+            <a href="{{ url_for('admin_plans') }}" class="btn secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .create-plan-form {
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+
+    .form-help {
+        font-size: 0.85rem;
+        color: #7f8c8d;
+        margin-top: 0.25rem;
+    }
+
+    .action-buttons {
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 3px;
+        display: inline-block;
+        text-decoration: none;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        border: none;
+        background-color: #3498db;
+        color: white;
+    }
+
+    .btn.secondary {
+        background-color: #95a5a6;
+    }
+
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 3px;
+    }
+
+    .alert-error {
+        background-color: #fadbd8;
+        color: #c0392b;
+        border: 1px solid #e74c3c;
+    }
+
+    .alert-success {
+        background-color: #d5f5e3;
+        color: #27ae60;
+        border: 1px solid #2ecc71;
+    }
+
+    .action-bar {
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
